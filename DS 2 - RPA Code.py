@@ -1,62 +1,49 @@
-import fitz  # PyMuPDF library
+import  PyPDF2
 import re
-
 def extract_invoice_details(pdf_path):
-    # Open the PDF file
-    pdf_document = fitz.open(pdf_path)
-    
-    # Initialize variables to store extracted details
+
+    pdfFileObj = open(pdf_path, 'rb')
+
+    pdf_document = PyPDF2.PdfReader(pdfFileObj)
+
     invoice_number = ""
     invoice_date = ""
     gross_amount = ""
     net_quantity = ""
     total_amount = ""
     tax_percentage = ""
-    
-    # Iterate through pages
-    for page_num in range(pdf_document.page_count):
-        page = pdf_document[page_num]
-        text = page.get_text("text")
-        
-        # Extracting details using regular expressions
-        invoice_number_match = re.search(r"Invoice Number: (\w+)", text)
-        invoice_date_match = re.search(r"Invoice Date: (\d{2}/\d{2}/\d{4})", text)
-        gross_amount_match = re.search(r"Gross Amount: (\$\d+\.\d+)", text)
-        net_quantity_match = re.search(r"Net Quantity: (\d+)", text)
-        total_amount_match = re.search(r"Total Amount: (\$\d+\.\d+)", text)
-        tax_percentage_match = re.search(r"Tax Percentage: (\d+%)", text)
-        
-        # Update variables if matches are found
-        if invoice_number_match:
-            invoice_number = invoice_number_match.group(1)
-        if invoice_date_match:
-            invoice_date = invoice_date_match.group(1)
-        if gross_amount_match:
-            gross_amount = gross_amount_match.group(1)
-        if net_quantity_match:
-            net_quantity = net_quantity_match.group(1)
-        if total_amount_match:
-            total_amount = total_amount_match.group(1)
-        if tax_percentage_match:
-            tax_percentage = tax_percentage_match.group(1)
-    
-    # Close the PDF file
-    pdf_document.close()
-    
-    # Return extracted details
+
+    for page_num in range(len(pdf_document.pages)):
+        page = pdf_document.pages[page_num]
+        text = page.extract_text()
+        text_list = text.splitlines()
+        invoice_number_match = text_list[0]
+        invoice_date_match = text_list[1]
+
+        i = 6
+        net_quantity_match = 0
+        gross_amount_match = 0
+        while text_list[i][0].isdigit():
+            net_quantity_match += int(text_list[i].split()[1])
+            gross_amount_match += int(text_list[i].split()[3][3:])
+            i+=1
+
+        total_amount_match = text_list[-1].split()[-1]
+        tax_percentage_match = 0
+
+    pdfFileObj.close()
+
     return {
-        "Invoice Number": invoice_number,
-        "Invoice Date": invoice_date,
-        "Gross Amount": gross_amount,
-        "Net Quantity": net_quantity,
-        "Total Amount": total_amount,
-        "Tax Percentage": tax_percentage,
+        "Invoice Number": invoice_number_match,
+        "Invoice Date": invoice_date_match,
+        "Gross Amount": gross_amount_match,
+        "Net Quantity": net_quantity_match,
+        "Total Amount": total_amount_match,
+        "Tax Percentage": tax_percentage_match,
     }
 
-# Example usage
 pdf_path = "C:\AB InBev\Invoice_A00001_ABC Agencies.pdf"
 invoice_details = extract_invoice_details(pdf_path)
 
-# Display extracted details
 for key, value in invoice_details.items():
     print(f"{key}: {value}")
